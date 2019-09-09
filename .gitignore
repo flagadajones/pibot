@@ -1,0 +1,13 @@
+lib
+bin
+.ipynb_checkpoints
+node_modules
+faces/
+archives/
+public/faces/
+public/archives/
+save/
+data/
+.vscode
+share/
+.idea/*

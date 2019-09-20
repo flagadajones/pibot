@@ -13,6 +13,7 @@ import (
 	"golang.org/x/exp/shiny/materialdesign/colornames"
 )
 
+var maxBlink int = 40
 var visage *Visage
 
 func run() {
@@ -22,6 +23,7 @@ func run() {
 		VSync:  true,
 	}
 	win, err := pixelgl.NewWindow(cfg)
+	//	win.SetMonitor(pixelgl.PrimaryMonitor())
 	if err != nil {
 		panic(err)
 	}
@@ -49,9 +51,11 @@ func run() {
 	//			v.pupil = pygame.transform.scale(
 	//				v.pupil, [v.eyeRadius, v.eyeRadius])
 	//			v.rad = v.pupil.get_width()/2
-	visage.rad = 10
+	visage.rad = int(visage.eyeRadius)
 
+	//visage.draw(&Cible{x: 0, y: 0, w: 212, h: 120})
 	for !win.Closed() {
+
 		visage.composite(win)
 		win.Update()
 	}
@@ -80,9 +84,9 @@ type CapSize struct {
 }
 
 func (v *Visage) draw(cible *Cible) {
-	//	v.calculCible(cible)
-	//	v.moveEyeLeft()
-	//	v.moveEyeRight()
+	v.calculCible(cible)
+	v.moveEyeLeft()
+	v.moveEyeRight()
 
 }
 
@@ -113,18 +117,20 @@ type Visage struct {
 
 	xxx, xxS int
 	blink    bool
+
+	X1, X2, Y1, Y2 float64
 }
 
 func (v *Visage) Init(capSize *CapSize) {
 	visage = v
-	//	v.capWidth = capSize.w
-	//	v.capHeight = capSize.h
+	v.capWidth = capSize.w
+	v.capHeight = capSize.h
 	//v.size = CapSize{w: 848, h: 480}
 	v.size = CapSize{w: 212, h: 120}
 
-	//	v.maxVt = 50
-	//	v.ratioVt = 2
-
+	v.maxVt = 50
+	v.ratioVt = 2
+	v.blink = true
 	//	v.lastrect = nil
 
 	v.starty = int(v.size.h / 2)
@@ -146,9 +152,9 @@ func (v *Visage) Init(capSize *CapSize) {
 	////				v.pupil, [v.eyeRadius, v.eyeRadius])
 	////			v.rad = v.pupil.get_width()/2
 
-	//	v.rad = v.eyeRadius
-	//	v.eyeMoveRadius = v.eyeHeight * 2 / 3
-	//	v.eyeMoveRadiusWidth = v.eyeWidth * 2 / 3
+	v.rad = int(v.eyeRadius)
+	v.eyeMoveRadius = int(v.eyeHeight * 2 / 3)
+	v.eyeMoveRadiusWidth = int(v.eyeWidth * 2 / 3)
 
 	v.leftEllipseX = float64(v.startx - v.startx/2) //v.startx - v.startx/2- v.eyeRadius
 	v.leftEllipseY = float64(v.starty)              //	v.leftEllipseY = int(float64(v.starty) - float64(v.eyeRadius)*v.eyeRatio)
@@ -156,10 +162,10 @@ func (v *Visage) Init(capSize *CapSize) {
 	v.leftEyeY = v.leftEllipseY
 	v.leftX = v.leftEyeX
 	v.leftY = v.leftEyeY
-	//	v.leftTx = v.leftX
-	//	v.leftTy = v.leftY
-	//	v.leftVx = 0
-	//	v.leftVy = 0
+	v.leftTx = int(v.leftX)
+	v.leftTy = int(v.leftY)
+	v.leftVx = 0
+	v.leftVy = 0
 
 	v.rightEllipseX = float64(v.startx + v.startx/2) //v.startx + v.startx/2 - v.eyeRadius
 	v.rightEllipseY = float64(v.starty)              //	v.rightEllipseY = int(float64(v.starty) - float64(v.eyeRadius)*v.eyeRatio)
@@ -167,16 +173,19 @@ func (v *Visage) Init(capSize *CapSize) {
 	v.rightEyeY = v.rightEllipseY
 	v.rightX = v.rightEyeX
 	v.rightY = v.rightEyeY
-	//	v.rightTx = v.rightX
-	//	v.rightTy = v.rightY
-	//	v.rightVx = 0
-	//	v.rightVy = 0
+	v.rightTx = int(v.rightX)
+	v.rightTy = int(v.rightY)
+	v.rightVx = 0
+	v.rightVy = 0
 
-	//	v.xxx = 150
-	//	v.xxS = 1
+	v.xxx = maxBlink
+	v.xxS = 1
 	//	v.blink = false
 
+}
+func (v *Visage) run() {
 	pixelgl.Run(run)
+
 }
 func sign(value int) float64 {
 	if value > 0 {
@@ -188,7 +197,7 @@ func sign(value int) float64 {
 	return 0.0
 }
 
-/*func (v *Visage) calculRayon(start, cible, eye CapSize) (float64, float64) {
+func (v *Visage) calculRayon(start, cible, eye CapSize) (float64, float64) {
 	Xa := start.w - eye.w
 	Ya := start.h - eye.h
 	Xb := cible.w - eye.w
@@ -201,7 +210,6 @@ func sign(value int) float64 {
 	angle := sign(S) * math.Acos(C)
 	return angle, Nb
 }
-*/
 
 func (v *Visage) calculCible(cible *Cible) {
 
@@ -209,75 +217,133 @@ func (v *Visage) calculCible(cible *Cible) {
 	y := cible.y
 	w := cible.w
 	h := cible.h
-
-	cibleX := x + w/2 + (v.size.w-v.capWidth)/2
+	v.cibleX = x + w/2 + (v.size.w-v.capWidth)/2
+	v.cibleY = y + h/2 + (v.size.h-v.capHeight)/2
+	log.Print("calculCible", v.cibleX, v.cibleY)
+	//cibleX := x + w/2 + (v.size.w-v.capWidth)/2
 	// symetrie axiale
-	v.cibleX = int(2*v.startx - cibleX)
-	v.cibleY = int(y + h/2 + (v.size.h-v.capHeight)/2)
+	//v.cibleX = int(2*v.startx - cibleX)
+	//v.cibleY = int(y + h/2 + (v.size.h-v.capHeight)/2)
 	// ratioDistance = w/212
-	ratioDistance := 1.0
+	//ratioDistance := 1.0
 
-	v.cibleX = int(2*v.startx - cibleX)
+	/*
+		v.cibleX = int(2*v.startx - cibleX)
 
-	angleLeft, left := v.calculRayon(
-		CapSize{v.startx, v.starty}, CapSize{v.cibleX, v.cibleY}, CapSize{v.leftEyeX, v.leftEyeY})
+		angleLeft, left := v.calculRayon(
+			CapSize{v.startx, v.starty}, CapSize{v.cibleX, v.cibleY}, CapSize{int(v.leftEyeX), int(v.leftEyeY)})
 
-	angleRight, right := v.calculRayon(
-		CapSize{v.startx, v.starty}, CapSize{v.cibleX, v.cibleY}, CapSize{v.rightEyeX, v.rightEyeY})
-	angleRight = angleRight + math.Pi
+		angleRight, right := v.calculRayon(
+			CapSize{v.startx, v.starty}, CapSize{v.cibleX, v.cibleY}, CapSize{int(v.rightEyeX), int(v.rightEyeY)})
+		angleRight = angleRight + math.Pi
 
-	v.leftTx = v.leftEyeX + v.eyeMoveRadiusWidth/2*int(
-		math.Min(1, ratioDistance*left/(left+right))*math.Cos(angleLeft))
-	v.leftTy = v.leftEyeY + v.eyeMoveRadius/2*int(
-		math.Min(1, ratioDistance*left/(left+right))*math.Sin(angleLeft))
+		log.Print("aa")
+		log.Print(angleLeft)
+		log.Print(angleRight)
 
-	v.rightTx = v.rightEyeX + v.eyeMoveRadiusWidth/2*int(
-		math.Min(1, ratioDistance*right/(left+right))*math.Cos(angleRight))
-	v.rightTy = v.rightEyeY + v.eyeMoveRadius/2*int(
-		math.Min(1, ratioDistance*right/(left+right))*math.Sin(angleRight))
+		v.leftTx = int(v.leftEyeX + float64(v.eyeMoveRadiusWidth/2*int(
+			math.Min(1, ratioDistance*left/(left+right))*math.Cos(angleLeft))))
+		v.leftTy = int(v.leftEyeY + float64(v.eyeMoveRadius/2*int(
+			math.Min(1, ratioDistance*left/(left+right))*math.Sin(angleLeft))))
+
+		v.rightTx = int(v.rightEyeX + float64(v.eyeMoveRadiusWidth/2*int(
+			math.Min(1, ratioDistance*right/(left+right))*math.Cos(angleRight))))
+		v.rightTy = int(v.rightEyeY + float64(v.eyeMoveRadius/2*int(
+			math.Min(1, ratioDistance*right/(left+right))*math.Sin(angleRight))))
+	*/
+
+	log.Print(v.leftEllipseX, v.leftEllipseY)
+	m := (v.leftEllipseY - float64(v.cibleY)) / (v.leftEllipseX - float64(v.cibleX))
+	//m := float64(v.cibleY) / float64(v.cibleX)
+
+	b := visage.eyeWidth  // * 2 / 3
+	a := visage.eyeHeight //* 2 / 3
+	log.Print(m, b, a)
+	//X = (+ ou -) a*b / sqrt( b^2 + a^2*m^2
+	v.X1 = a * b / math.Sqrt(b*b+a*a*m*m)
+	v.X2 = -a * b / math.Sqrt(b*b+a*a*m*m)
+	if float64(v.cibleX) < v.leftEllipseX {
+		v.leftX = -a * b / math.Sqrt(b*b+a*a*m*m)
+	} else {
+		v.leftX = a * b / math.Sqrt(b*b+a*a*m*m)
+	}
+	v.leftY = m * v.leftX
+	//	if v.cibleX < int(v.leftEllipseX) {
+	//		v.X1 = -v.X1
+	//	}
+	v.Y1 = m * v.X1
+	v.Y2 = m * v.X2
+	//	if v.cibleY < int(v.leftEllipseY) {
+	//		v.Y1 = -v.Y1
+	//	}
+	//	v.leftY = v.Y1 + v.leftEllipseY
+	//	v.leftX = v.X1 + v.leftEllipseX
+
+	v.X1 += v.leftEllipseX
+	v.X2 += v.leftEllipseX
+	v.Y1 += v.leftEllipseY
+	v.Y2 += v.leftEllipseY
+
+	v.leftY += v.leftEllipseY
+	v.leftX += v.leftEllipseX
+
+	m = (v.rightEllipseY - float64(v.cibleY)) / (v.rightEllipseX - float64(v.cibleX))
+	//m := float64(v.cibleY) / float64(v.cibleX)
+
+	if float64(v.cibleX) < v.rightEllipseX {
+		v.rightX = -a * b / math.Sqrt(b*b+a*a*m*m)
+	} else {
+		v.rightX = a * b / math.Sqrt(b*b+a*a*m*m)
+	}
+	v.rightY = m * v.rightX
+	v.rightY += v.rightEllipseY
+	v.rightX += v.rightEllipseX
+
+	log.Print(v.X1, v.Y1, v.X2, v.Y2)
 }
 
-/*
 func (v *Visage) moveEyeLeft() {
-	v.leftVy = Max(-1*v.maxVt, Min(v.maxVt,
-		(v.leftTy-v.leftY)/v.ratioVt))
-	v.leftVx = Max(-1*v.maxVt, Min(v.maxVt,
-		(v.leftTx-v.leftX)/v.ratioVt))
-	v.leftY += int(v.leftVy)
-	v.leftX += int(v.leftVx)
-	if v.leftX < v.rad {
-		v.leftX = v.rad
-	} else if v.leftX > v.size.w-v.rad {
-		v.leftX = v.size.w - v.rad
-	}
-	if v.leftY < v.rad {
-		v.leftY = v.rad
-	} else if v.leftY > v.size.h-v.rad {
-		v.leftY = v.size.h - v.rad
-	}
 
+	/*
+		v.leftVy = Max(-1*v.maxVt, Min(v.maxVt,
+			(v.leftTy-int(v.leftY))/v.ratioVt))
+		v.leftVx = Max(-1*v.maxVt, Min(v.maxVt,
+			(v.leftTx-int(v.leftX))/v.ratioVt))
+		v.leftY += float64(v.leftVy)
+		v.leftX += float64(v.leftVx)
+		if v.leftX < float64(v.rad) {
+			v.leftX = float64(v.rad)
+		} else if v.leftX > float64(v.size.w-v.rad) {
+			v.leftX = float64(v.size.w - v.rad)
+		}
+		if v.leftY < float64(v.rad) {
+			v.leftY = float64(v.rad)
+		} else if v.leftY > float64(v.size.h-v.rad) {
+			v.leftY = float64(v.size.h - v.rad)
+		}
+	*/
 }
-*/
-/*
-func (v *Visage) moveEyeRight() {
-	v.rightVy = Max(-1*v.maxVt, Min(v.maxVt,
-		(v.rightTy-v.rightY)/v.ratioVt))
-	v.rightVx = Max(-1*v.maxVt, Min(v.maxVt,
-		(v.rightTx-v.rightX)/v.ratioVt))
-	v.rightY += int(v.rightVy)
-	v.rightX += int(v.rightVx)
-	if v.rightX < v.rad {
-		v.rightX = v.rad
-	} else if v.rightX > v.size.w-v.rad {
-		v.rightX = v.size.w - v.rad
-	}
-	if v.rightY < v.rad {
-		v.rightY = v.rad
-	} else if v.rightY > v.size.h-v.rad {
-		v.rightY = v.size.h - v.rad
-	}
+
+func (v *Visage) moveEyeRight() { /*
+		v.rightVy = Max(-1*v.maxVt, Min(v.maxVt,
+			(v.rightTy-int(v.rightY))/v.ratioVt))
+		v.rightVx = Max(-1*v.maxVt, Min(v.maxVt,
+			(v.rightTx-int(v.rightX))/v.ratioVt))
+		v.rightY += float64(v.rightVy)
+		v.rightX += float64(v.rightVx)
+		if v.rightX < float64(v.rad) {
+			v.rightX = float64(v.rad)
+		} else if v.rightX > float64(v.size.w-v.rad) {
+			v.rightX = float64(v.size.w - v.rad)
+		}
+		if v.rightY < float64(v.rad) {
+			v.rightY = float64(v.rad)
+		} else if v.rightY > float64(v.size.h-v.rad) {
+			v.rightY = float64(v.size.h - v.rad)
+		}
+	*/
 }
-*/
+
 func (v *Visage) composite(win *pixelgl.Window) {
 	win.Clear(pixel.RGB(1, 1, 1))
 	imd := imdraw.New(nil)
@@ -333,9 +399,33 @@ func (v *Visage) composite(win *pixelgl.Window) {
 
 	mat = pixel.IM
 	mat = mat.Scaled(pixel.V(0, 0), float64(visage.eyeRadius)/visage.pd.Bounds().W())
-	mat = mat.Moved(pixel.V(visage.rightX-25, visage.rightY))
+	mat = mat.Moved(pixel.V(visage.rightX, visage.rightY))
 	visage.pupil.Draw(win, mat)
 
+	if visage.blink {
+		log.Print("blink")
+		imd.Color = pixel.RGB(0.996, 0.764, 0.674)
+		imd.Push(pixel.V(float64(visage.leftEllipseX), visage.leftEllipseY+float64(visage.xxx)),
+			pixel.V(float64(visage.rightEllipseX), visage.rightEllipseY+float64(visage.xxx)))
+		imd.Ellipse(pixel.V(visage.eyeWidth, visage.eyeHeight), 0)
+
+		//logging.info(visage.xxx)
+		log.Print(visage.xxx)
+		visage.xxx = visage.xxx + visage.xxS*5
+		log.Print(visage.xxx)
+		if visage.xxx > maxBlink {
+			visage.xxx = maxBlink
+			visage.xxS = -1 * visage.xxS
+		}
+		if visage.xxx < 0 {
+			visage.xxx = 0
+			visage.xxS = -1 * visage.xxS
+		}
+		if visage.xxx == maxBlink && visage.xxS == -1 && visage.blink {
+			//visage.blink = false
+		}
+	}
+	imd.Draw(win)
 	//mask
 	canvas := pixelgl.NewCanvas(win.Bounds())
 	imd2 := imdraw.New(nil)
@@ -353,11 +443,19 @@ func (v *Visage) composite(win *pixelgl.Window) {
 	imd2.Ellipse(pixel.V(visage.eyeWidth, visage.eyeHeight), 0)
 
 	imd2.Draw(canvas)
+
 	canvas.Draw(win, pixel.IM.Moved(win.Bounds().Center()))
 	//point de cible
 	imd.Color = pixel.RGB(0, 0, 1)
 	imd.Push(pixel.V(float64(visage.cibleX), float64(visage.cibleY)))
 	imd.Circle(5, 0)
+	/*	imd.Color = pixel.RGB(1, 0, 0)
+		imd.Push(pixel.V(float64(visage.X1), float64(visage.Y1)))
+		imd.Circle(5, 0)
+		imd.Color = pixel.RGB(0, 1, 0)
+		imd.Push(pixel.V(float64(visage.X2), float64(visage.Y2)))
+		imd.Circle(5, 0)
+	*/
 	//sourcils
 	imd.Color = pixel.RGB(0, 0, 0)
 	imd.Push(pixel.V(visage.leftEllipseX, visage.leftEllipseY+visage.eyeHeight), pixel.V(visage.rightEllipseX, visage.rightEllipseY+visage.eyeHeight))

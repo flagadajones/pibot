@@ -1,0 +1,50 @@
+package main
+
+import (
+	"fmt"
+
+	"gobot.io/x/gobot"
+	"gobot.io/x/gobot/drivers/gpio"
+	"gobot.io/x/gobot/platforms/raspi"
+)
+
+
+
+func main() {
+/*	DualPhaseStepping:= [][4]byte{
+		{1, 0, 1, 0},
+		{0, 1, 1, 0},
+		{0, 1, 0, 1},
+		{1, 0, 0, 1},
+	}
+*/	r := raspi.NewAdaptor()
+//1	stepper := gpio.NewStepperDriver(r, [4]string{"40","38", "36", "32"}, gpio.StepperModes.DualPhaseStepping, 2048)
+//2	stepper := gpio.NewStepperDriver(r, [4]string{"37","35", "33", "31"}, gpio.StepperModes.DualPhaseStepping, 2048)
+//3	stepper := gpio.NewStepperDriver(r, [4]string{"15","13", "11", "7"}, gpio.StepperModes.DualPhaseStepping, 2048)
+//4	stepper := gpio.NewStepperDriver(r, [4]string{"22","18", "16", "12"}, gpio.StepperModes.DualPhaseStepping, 2048)
+
+	//	stepper := gpio.NewStepperDriver(r, [4]string{"37","35", "33", "31"}, DualPhaseStepping, 2048)
+
+	work := func() {
+		//set spped
+		stepper.SetSpeed(60)
+		fmt.Print("1")
+		//Move forward one revolution
+		if err := stepper.Move(2048); err != nil {
+			fmt.Println(err)
+		}
+		fmt.Print("1")
+		//Move backward one revolution
+		if err := stepper.Move(-2048); err != nil {
+			fmt.Println(err)
+		}
+	}
+
+	robot := gobot.NewRobot("stepperBot",
+		[]gobot.Connection{r},
+		[]gobot.Device{stepper},
+		work,
+	)
+
+	robot.Start()
+}

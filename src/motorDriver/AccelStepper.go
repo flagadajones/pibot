@@ -4,7 +4,8 @@ import (
 	"math"
 	"time"
 
-	rpi "github.com/nathan-osman/go-rpigpio"
+	//rpi "github.com/nathan-osman/go-rpigpio"
+	rpi "github.com/nahsh/go-rpigpio"
 )
 
 func constrain(val, minVal, maxVal float64) float64 {

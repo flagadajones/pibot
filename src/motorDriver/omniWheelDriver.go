@@ -32,13 +32,13 @@ type OmniWheelDriver struct {
 
 func (omniW *OmniWheelDriver) init(wheelDiam float64, baseDiam float64, maxSpeed float64, maxAccel float64) {
 	//omniW.stepper0 = AccelStepper{}
-	omniW.stepper0.init(FULL4WIRE, 1, 2, 3, 4, true)
+	omniW.stepper0.init(FULL4WIRE, 37,35, 33, 31, true)
 	//omniW.stepper1 = AccelStepper{}
-	omniW.stepper1.init(FULL4WIRE, 1, 2, 3, 4, true)
+	omniW.stepper1.init(FULL4WIRE, 1, 2, 3, 4, false)
 	//omniW.stepper2 = AccelStepper{}
-	omniW.stepper2.init(FULL4WIRE, 1, 2, 3, 4, true)
+	omniW.stepper2.init(FULL4WIRE, 1, 2, 3, 4, false)
 	//omniW.stepper3 = AccelStepper{}
-	omniW.stepper3.init(FULL4WIRE, 1, 2, 3, 4, true)
+	omniW.stepper3.init(FULL4WIRE, 1, 2, 3, 4, false)
 	omniW.index = 0
 
 	omniW.step = 0b001

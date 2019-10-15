@@ -1,6 +1,7 @@
 package main
 
 import (
+	"image"
 	"log"
 	"time"
 
@@ -15,6 +16,7 @@ var devices = []gobot.Device{}
 
 var robot *gobot.Robot
 var facerec *facereco.FaceRecognizer
+var faces *[]image.Rectangle
 
 func run() {
 	log.Print("eee")
@@ -58,8 +60,12 @@ func main() {
 	gobot.Every(3000*time.Millisecond, func() {
 		v.Blink()
 	})
-	gobot.Every(10*time.Millisecond, func() {
-		faces := facerec.GetFaces()
+	gobot.Every(5000*time.Millisecond, func() {
+		faces = facerec.GetFaces()
+	})
+
+	gobot.Every(100*time.Millisecond, func() {
+
 		if faces != nil && len(*faces) > 0 {
 			log.Println("face")
 			log.Println((*faces)[0])

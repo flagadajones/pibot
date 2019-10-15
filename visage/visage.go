@@ -2,11 +2,13 @@ package visage
 
 import (
 	//"image/color"
+	"fmt"
 	"image/png"
 	"math"
 	"os"
 	"path"
 	"runtime"
+	"time"
 
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/imdraw"
@@ -25,44 +27,36 @@ func (v *Visage) Run() {
 		VSync:  true,
 	}
 	win, err := pixelgl.NewWindow(cfg)
-	//	win.SetMonitor(pixelgl.PrimaryMonitor())
+	//	pixel.NewBatch
+	//win.SetMonitor(pixelgl.PrimaryMonitor())
 	if err != nil {
 		panic(err)
 	}
 
 	win.Clear(colornames.Black)
-	_, currentfile, _, _ := runtime.Caller(0)
-	iris := path.Join(path.Dir(currentfile), "iris.png")
-
-	f, err := os.Open(iris)
-	if err != nil {
-		panic(err)
-	}
-	img, err := png.Decode(f)
-	if err != nil {
-		panic(err)
-	}
-	pd := pixel.PictureDataFromImage(img)
-	visage.pupil = pixel.NewSprite(pd, pd.Bounds())
-	visage.pd = pd
-	mat := pixel.IM
-	mat = mat.Moved(win.Bounds().Center())
-	//log.Print("radiu")
-	//log.Print(visage.eyeRadius)
-	mat = mat.Scaled(win.Bounds().Center(), float64(visage.eyeRadius)/pd.Bounds().W())
-	visage.pupil.Draw(win, mat)
-	//	v.pupil = pygame.image.load(dir_path+'/iris.png')
-	//		v.pupil = v.pupil.convert_alpha()
-	//			v.pupil = pygame.transform.scale(
-	//				v.pupil, [v.eyeRadius, v.eyeRadius])
-	//			v.rad = v.pupil.get_width()/2
-	visage.rad = int(visage.eyeRadius)
 
 	//visage.draw(&Cible{x: 0, y: 0, w: 212, h: 120})
+	var (
+		frames = 0
+		second = time.Tick(time.Second)
+	)
+	//init canvas thread principal
+	visage.canvas = pixelgl.NewCanvas(pixel.R(0, 0, float64(visage.size.W), float64(visage.size.H)))
+	visage.canvas.Clear(pixel.Alpha(0))
+	visage.canvas.SetComposeMethod(pixel.ComposeXor)
+	visage.imdMask.Draw(visage.canvas)
+
 	for !win.Closed() {
 
 		visage.composite(win)
 		win.Update()
+		frames++
+		select {
+		case <-second:
+			win.SetTitle(fmt.Sprintf("FPS: %d", frames))
+			frames = 0
+		default:
+		}
 	}
 }
 
@@ -128,6 +122,12 @@ type Visage struct {
 
 	X1, X2, Y1, Y2 float64
 	cmPerPx        float64
+
+	matPupilInit pixel.Matrix
+	imdSourcils  *imdraw.IMDraw
+	imdMask      *imdraw.IMDraw
+
+	canvas *pixelgl.Canvas
 }
 
 func (v *Visage) Blink() {
@@ -197,6 +197,54 @@ func (v *Visage) Init(capSize *CapSize) {
 	v.xxx = v.maxBlink
 	v.xxS = 1
 	//	v.blink = false
+
+	//matrice init:
+	//v.matPupilInit = pixel.IM
+
+	_, currentfile, _, _ := runtime.Caller(0)
+	iris := path.Join(path.Dir(currentfile), "iris.png")
+
+	f, err := os.Open(iris)
+	if err != nil {
+		panic(err)
+	}
+	img, err := png.Decode(f)
+	if err != nil {
+		panic(err)
+	}
+	v.pd = pixel.PictureDataFromImage(img)
+	v.pupil = pixel.NewSprite(v.pd, v.pd.Bounds())
+
+	//	mat := pixel.IM
+	//	mat = mat.Moved(win.Bounds().Center())
+	//	mat = mat.Scaled(win.Bounds().Center(), float64(visage.eyeRadius)/pd.Bounds().W())
+	//visage.pupil.Draw(win, mat)
+
+	v.rad = int(v.eyeRadius)
+
+	v.matPupilInit = pixel.IM.Scaled(pixel.V(0, 0), float64(v.eyeRadius)/v.pd.Bounds().W())
+
+	//sourcils
+	v.imdSourcils = imdraw.New(nil)
+	v.imdSourcils.Color = pixel.RGB(0, 0, 0)
+	v.imdSourcils.Push(pixel.V(v.leftEllipseX, v.leftEllipseY+v.eyeHeight), pixel.V(v.rightEllipseX, v.rightEllipseY+v.eyeHeight))
+	v.imdSourcils.EllipseArc(pixel.V(v.eyeWidth, v.eyeHeight), math.Pi/5, 4*math.Pi/5, 5)
+
+	v.imdSourcils.Push(pixel.V(v.leftEllipseX, v.leftEllipseY), pixel.V(v.rightEllipseX, v.rightEllipseY))
+	v.imdSourcils.EllipseArc(pixel.V(v.eyeWidth, v.eyeHeight), 0, 2*math.Pi, 1)
+
+	//mask
+	v.imdMask = imdraw.New(nil)
+	//canvas.SetBounds(win.Bounds())
+
+	v.imdMask.Color = pixel.RGB(0.996, 0.764, 0.674)
+	v.imdMask.Push(pixel.V(0, 0), pixel.V(float64(v.size.W), float64(v.size.H)))
+	v.imdMask.Rectangle(0)
+
+	v.imdMask.Color = pixel.RGB(0, 0, 0)
+	v.imdMask.Push(pixel.V(float64(v.leftEllipseX), v.leftEllipseY),
+		pixel.V(float64(v.rightEllipseX), v.rightEllipseY))
+	v.imdMask.Ellipse(pixel.V(v.eyeWidth, v.eyeHeight), 0)
 
 }
 
@@ -356,65 +404,6 @@ func (v *Visage) calculCible(cible *Cible) {
 
 }
 
-/*
-func (v *Visage) calculCible(cible *Cible) {
-
-	x := cible.X
-	y := cible.Y
-	w := cible.W
-	h := cible.H
-	v.cibleX = (x + w/2) * v.size.W / v.capWidth
-	v.cibleY = (y - h/2) * v.size.H / v.capHeight
-
-	v.cible = cible
-	v.cible.X = v.cible.X * v.size.W / v.capWidth
-	v.cible.Y = v.cible.Y * v.size.W / v.capWidth
-	v.cible.W = v.cible.W * v.size.W / v.capWidth
-	v.cible.H = v.cible.H * v.size.W / v.capWidth
-
-	//log.Print(v.leftEllipseX, v.leftEllipseY)
-	m := (v.leftEllipseY - float64(v.cibleY)) / (v.leftEllipseX - float64(v.cibleX))
-	//m := float64(v.cibleY) / float64(v.cibleX)
-
-	b := visage.eyeWidth  // * 2 / 3
-	a := visage.eyeHeight //* 2 / 3
-	//log.Print(m, b, a)
-	//X = (+ ou -) a*b / sqrt( b^2 + a^2*m^2
-	v.X1 = a * b / math.Sqrt(b*b+a*a*m*m)
-	v.X2 = -a * b / math.Sqrt(b*b+a*a*m*m)
-	if float64(v.cibleX) < v.leftEllipseX {
-		v.leftX = -a * b / math.Sqrt(b*b+a*a*m*m)
-	} else {
-		v.leftX = a * b / math.Sqrt(b*b+a*a*m*m)
-	}
-	v.leftY = m * v.leftX
-
-	v.Y1 = m * v.X1
-	v.Y2 = m * v.X2
-
-	v.X1 += v.leftEllipseX
-	v.X2 += v.leftEllipseX
-	v.Y1 += v.leftEllipseY
-	v.Y2 += v.leftEllipseY
-
-	v.leftY += v.leftEllipseY
-	v.leftX += v.leftEllipseX
-
-	m = (v.rightEllipseY - float64(v.cibleY)) / (v.rightEllipseX - float64(v.cibleX))
-	//m := float64(v.cibleY) / float64(v.cibleX)
-
-	if float64(v.cibleX) < v.rightEllipseX {
-		v.rightX = -a * b / math.Sqrt(b*b+a*a*m*m)
-	} else {
-		v.rightX = a * b / math.Sqrt(b*b+a*a*m*m)
-	}
-	v.rightY = m * v.rightX
-	v.rightY += v.rightEllipseY
-	v.rightX += v.rightEllipseX
-
-	//log.Print(v.X1, v.Y1, v.X2, v.Y2)
-}
-*/
 func (v *Visage) moveEyeLeft() {
 
 	/*
@@ -459,27 +448,16 @@ func (v *Visage) moveEyeRight() { /*
 
 func (v *Visage) composite(win *pixelgl.Window) {
 	win.Clear(pixel.RGB(1, 1, 1))
-	imd := imdraw.New(nil)
-	//	imd.Color = pixel.RGB(1, 1, 1)
-
-	//	imd.Push(pixel.V(float64(visage.leftEllipseX), visage.leftEllipseY),
-	//		pixel.V(float64(visage.rightEllipseX), visage.rightEllipseY))
-
-	//	imd.Ellipse(pixel.V(visage.eyeWidth, visage.eyeHeight), 0)
 
 	//pupilles
-	mat := pixel.IM
-	mat = mat.Scaled(pixel.V(0, 0), float64(visage.eyeRadius)/visage.pd.Bounds().W())
-	mat = mat.Moved(pixel.V(visage.leftX, visage.leftY))
+	mat := visage.matPupilInit.Moved(pixel.V(visage.leftX, visage.leftY))
 	visage.pupil.Draw(win, mat)
-
-	mat = pixel.IM
-	mat = mat.Scaled(pixel.V(0, 0), float64(visage.eyeRadius)/visage.pd.Bounds().W())
-	mat = mat.Moved(pixel.V(visage.rightX, visage.rightY))
+	mat = visage.matPupilInit.Moved(pixel.V(visage.rightX, visage.rightY))
 	visage.pupil.Draw(win, mat)
 
 	if visage.blink {
 		//	log.Print("blink")
+		imd := imdraw.New(nil)
 		imd.Color = pixel.RGB(0.996, 0.764, 0.674)
 		imd.Push(pixel.V(float64(visage.leftEllipseX), visage.leftEllipseY+float64(visage.xxx)),
 			pixel.V(float64(visage.rightEllipseX), visage.rightEllipseY+float64(visage.xxx)))
@@ -500,53 +478,29 @@ func (v *Visage) composite(win *pixelgl.Window) {
 		if visage.xxx == visage.maxBlink && visage.xxS == -1 && visage.blink {
 			visage.blink = false
 		}
+		imd.Draw(win)
 	}
-	imd.Draw(win)
 
-	//mask
-	canvas := pixelgl.NewCanvas(win.Bounds())
-	imd2 := imdraw.New(nil)
-	canvas.SetBounds(win.Bounds())
-	canvas.Clear(pixel.Alpha(0))
-	canvas.SetComposeMethod(pixel.ComposeXor)
-
-	imd2.Color = pixel.RGB(0.996, 0.764, 0.674)
-	imd2.Push(pixel.V(0, 0), pixel.V(win.Bounds().W(), win.Bounds().H()))
-	imd2.Rectangle(0)
-
-	imd2.Color = pixel.RGB(0, 0, 0)
-	imd2.Push(pixel.V(float64(visage.leftEllipseX), visage.leftEllipseY),
-		pixel.V(float64(visage.rightEllipseX), visage.rightEllipseY))
-	imd2.Ellipse(pixel.V(visage.eyeWidth, visage.eyeHeight), 0)
-
-	imd2.Draw(canvas)
-	canvas.Draw(win, pixel.IM.Moved(win.Bounds().Center()))
+	visage.canvas.Draw(win, pixel.IM.Moved(win.Bounds().Center()))
+	visage.imdSourcils.Draw(win)
 
 	//point de cible
-	imd3 := imdraw.New(nil)
-	imd3.Color = pixel.RGB(0, 0, 1)
-	imd3.Push(pixel.V(float64(visage.cibleX), float64(visage.cibleY)))
-	imd3.Circle(5, 0)
-	if visage.cible != nil {
+	/*
+		imd3 := imdraw.New(nil)
+		imd3.Color = pixel.RGB(0, 0, 1)
+		imd3.Push(pixel.V(float64(visage.cibleX), float64(visage.cibleY)))
+		imd3.Circle(5, 0)
+		if visage.cible != nil {
 
-		imd3.Push(pixel.V(float64(visage.cible.X), float64(visage.cible.Y)), pixel.V(float64(visage.cible.X+visage.cible.W), float64(visage.cible.Y-visage.cible.H)))
-		imd3.Rectangle(2)
-	}
-	/*	imd.Color = pixel.RGB(1, 0, 0)
-		imd.Push(pixel.V(float64(visage.X1), float64(visage.Y1)))
-		imd.Circle(5, 0)
-		imd.Color = pixel.RGB(0, 1, 0)
-		imd.Push(pixel.V(float64(visage.X2), float64(visage.Y2)))
-		imd.Circle(5, 0)
+			imd3.Push(pixel.V(float64(visage.cible.X), float64(visage.cible.Y)), pixel.V(float64(visage.cible.X+visage.cible.W), float64(visage.cible.Y-visage.cible.H)))
+			imd3.Rectangle(2)
+		}
+		imd3.Color = pixel.RGB(1, 0, 0)
+		imd3.Push(pixel.V(float64(visage.X1), float64(visage.Y1)))
+		imd3.Circle(5, 0)
+		imd3.Color = pixel.RGB(0, 1, 0)
+		imd3.Push(pixel.V(float64(visage.X2), float64(visage.Y2)))
+		imd3.Circle(5, 0)
+		imd3.Draw(win)
 	*/
-	//sourcils
-	imd.Color = pixel.RGB(0, 0, 0)
-	imd.Push(pixel.V(visage.leftEllipseX, visage.leftEllipseY+visage.eyeHeight), pixel.V(visage.rightEllipseX, visage.rightEllipseY+visage.eyeHeight))
-	imd.EllipseArc(pixel.V(visage.eyeWidth, visage.eyeHeight), math.Pi/5, 4*math.Pi/5, 5)
-
-	imd.Push(pixel.V(visage.leftEllipseX, visage.leftEllipseY), pixel.V(visage.rightEllipseX, visage.rightEllipseY))
-	imd.EllipseArc(pixel.V(visage.eyeWidth, visage.eyeHeight), 0, 2*math.Pi, 1)
-
-	imd.Draw(win)
-	//imd3.Draw(win)
 }

@@ -20,7 +20,7 @@
     "fs-extra": "^5.0.0",
     "http": "0.0.0",
     "materialize-css": "^0.99.0",
-    "mongoose": "^4.11.3",
+    "mongoose": "^5.7.5",
     "path": "^0.12.7",
     "python-shell": "^0.4.0",
     "qr-image": "^3.2.0",

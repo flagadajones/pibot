@@ -33,8 +33,9 @@ func (faceR *FaceRecognizer) Init() {
 	_, currentfile, _, _ := runtime.Caller(0)
 	cascade := path.Join(path.Dir(currentfile), "haarcascade_frontalface_alt.xml")
 
-	//window := opencv.NewWindowDriver()
+	//window = opencv.NewWindowDriver()
 	faceR.camera = opencv.NewCameraDriver(0)
+
 	mat := gocv.NewMat()
 	faceR.img.Store(mat)
 	faceR.camera.On(opencv.Frame, func(data interface{}) {
@@ -53,10 +54,13 @@ func (faceR *FaceRecognizer) Init() {
 		//log.Println(window)
 		opencv.DrawRectangles(j, faces, 0, 255, 0, 5)
 		//i = j
+		//	gocv.IMWrite("/Users/grua341/go/src/github.com/flagadajones/pibot/save.jpeg", j)
 		faceR.img.Store(j)
 
+		//	faceR.Run()
+
 	})
-	faceR.window = gocv.NewWindow("Hello")
+	//faceR.window = gocv.NewWindow("Hello")
 	faceR.Devices = []gobot.Device{ /*window,*/ faceR.camera}
 }
 
